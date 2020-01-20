@@ -1,12 +1,12 @@
+# Modified from: https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/pix2pix/datasets.py
 import glob
 import random
 import os
 import numpy as np
 
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 import torchvision.transforms as transforms
-
 
 class ImageDataset(Dataset):
     def __init__(self, root, transforms_=None, mode="train"):
@@ -34,3 +34,10 @@ class ImageDataset(Dataset):
 
     def __len__(self):
         return len(self.files)
+
+def get_dataloader(root, mode, transform, batch_size):
+    return DataLoader(
+            ImageDataset(root, transforms_=transform, mode=mode),
+            batch_size=batch_size,
+            shuffle=True
+            )
