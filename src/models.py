@@ -12,10 +12,10 @@ def weights_init_normal(m):
 
 class Discriminator(nn.Module):
     def __init__(self, in_channels=3):
-        super(Discriminator, self).__init__()3
+        super(Discriminator, self).__init__()
 
         self.model = nn.Sequential(
-            nn.Conv2d(in_filters * 2, 64, 4, stride=2, padding=1),
+            nn.Conv2d(in_channels * 2, 64, 4, stride=2, padding=1),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(64, 128, 4, stride=2, padding=1),
             nn.InstanceNorm2d(128),

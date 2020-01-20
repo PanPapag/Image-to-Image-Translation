@@ -5,6 +5,7 @@ import torch
 from torchvision import datasets
 
 from datasets import *
+from models import *
 
 CURRENT_DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 SAMPLE_INTERVAL = 250
@@ -46,21 +47,52 @@ def main():
     args = make_args_parser()
     print_args(args)
     # Make export directories
-    os.makedirs("generated_images/{}".format(args.dataset_name), exist_ok=True)
-    os.makedirs("saved_models/{}".format(args.dataset_name), exist_ok=True)
+    os.makedirs("../generated_images/{}".format(args.dataset_name), exist_ok=True)
+    os.makedirs("../saved_models/{}".format(args.dataset_name), exist_ok=True)
     # Setup dataloaders
     transform_= [
         transforms.Resize((args.image_height, args.image_width), Image.BICUBIC),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ]
-
-    train_dataloader = get_dataloader(root='./datasets/'+args.dataset_name,
+    train_dataloader = get_dataloader(root='../datasets/'+args.dataset_name,
                                       transform=transform_, mode='train', batch_size=1)
-    val_dataloader = get_dataloader(root='./datasets/'+args.dataset_name,
+    val_dataloader = get_dataloader(root='../datasets/'+args.dataset_name,
                                     mode='val', transform=transform_, batch_size=10)
     # Declare tensor type
     Tensor = torch.cuda.FloatTensor if device == 'cuda' else torch.FloatTensor
+
+    # Initialize generator and discriminator
+    generator = GeneratorUNet()
+    discriminator = Discriminator()
+    # Initialize Loss functions
+    criterion_GAN = torch.nn.MSELoss()
+    criterion_pixelwise = torch.nn.L1Loss()
+
+    if device == 'cuda':
+        generator = generator.cuda()
+        discriminator = discriminator.cuda()
+        criterion_GAN = criterion_GAN.cuda()
+        criterion_pixelwise = criterion_pixelwise.cuda()
+
+    if args.start_epoch != 0:
+        # Load pretrained models
+        generator.load_state_dict(
+            torch.load("../saved_models/%s/generator_%d.pth" % (args.dataset_name, args.start_epoch)))
+        discriminator.load_state_dict(
+            torch.load("../saved_models/%s/discriminator_%d.pth" % (args.dataset_name, args.start_epoch)))
+    else:
+        # Initialize weights
+        generator.apply(weights_init_normal)
+        discriminator.apply(weights_init_normal)
+
+    # Setup optimizers
+    optimizer_G = torch.optim.Adam(generator.parameters(), lr=LR, betas=(B1, B2))
+    optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=LR, betas=(B1, B2))
+
+    # Train model
+    for epoch in range(args.start_epoch, N_EPOCHS):
+        print(epoch)
 
 if __name__ == '__main__':
     main()
