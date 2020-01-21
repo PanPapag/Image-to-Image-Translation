@@ -54,7 +54,7 @@ class UNetUp(nn.Module):
     def __init__(self, in_size, out_size, dropout=0.0):
         super(UNetUp, self).__init__()
         self.model = nn.Sequential()
-        self.model.add_module('conv', nn.Conv2d(in_size, out_size, 4, 2, 1, bias=False))
+        self.model.add_module('convtr', nn.ConvTranspose2d(in_size, out_size, 4, 2, 1, bias=False))
         self.model.add_module('norm', nn.InstanceNorm2d(out_size))
         self.model.add_module('relu', nn.ReLU(inplace=True))
         if dropout:

@@ -1,8 +1,12 @@
 import argparse
 import os
+import sys
 import torch
 
 from torchvision import datasets
+import torchvision.transforms as transforms
+from torch.autograd import Variable
+from torchvision.utils import save_image
 
 from datasets import *
 from models import *
@@ -68,6 +72,11 @@ def main():
     # Initialize Loss functions
     criterion_GAN = torch.nn.MSELoss()
     criterion_pixelwise = torch.nn.L1Loss()
+    # Refs: https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/pix2pix/pix2pix.py
+    # Loss weight of L1 pixel-wise loss between translated image and real image
+    lambda_pixel = 100
+    # Calculate output of image discriminator (PatchGAN)
+    patch = (1, args.image_height // 2 ** 4, args.image_width // 2 ** 4)
 
     if device == 'cuda':
         generator = generator.cuda()
@@ -92,7 +101,70 @@ def main():
 
     # Train model
     for epoch in range(args.start_epoch, N_EPOCHS):
-        print(epoch)
+        for batch_idx, data in enumerate(train_dataloader):
+            # Model inputs
+            real_A = Variable(data["B"].type(Tensor))
+            real_B = Variable(data["A"].type(Tensor))
+
+            # Adversarial ground truths
+            valid = Variable(Tensor(np.ones((real_A.size(0), *patch))), requires_grad=False)
+            fake = Variable(Tensor(np.zeros((real_A.size(0), *patch))), requires_grad=False)
+
+            optimizer_G.zero_grad()
+
+            # GAN loss
+            fake_B = generator(real_A)
+            pred_fake = discriminator(fake_B, real_A)
+            loss_GAN = criterion_GAN(pred_fake, valid)
+            # Pixel-wise loss
+            loss_pixel = criterion_pixelwise(fake_B, real_B)
+            # Total loss
+            loss_G = loss_GAN + lambda_pixel * loss_pixel
+
+            loss_G.backward()
+
+            optimizer_G.step()
+
+            optimizer_D.zero_grad()
+
+            # Real loss
+            pred_real = discriminator(real_B, real_A)
+            loss_real = criterion_GAN(pred_real, valid)
+
+            # Fake loss
+            pred_fake = discriminator(fake_B.detach(), real_A)
+            loss_fake = criterion_GAN(pred_fake, fake)
+
+            # Total loss
+            loss_D = 0.5 * (loss_real + loss_fake)
+
+            loss_D.backward()
+            optimizer_D.step()
+
+            batches_done = epoch * len(train_dataloader) + batch_idx
+            sys.stdout.write("\rEpoch: [{}/{}] Batch: [{}/{}] G_Loss: {} D_Loss: {}".format(
+                epoch,
+                N_EPOCHS,
+                batch_idx,
+                len(train_dataloader),
+                loss_G.item(),
+                loss_D.item()))
+
+            if batches_done % SAMPLE_INTERVAL == 0:
+                data = next(iter(val_dataloader))
+                real_A = Variable(data["B"].type(Tensor))
+                real_B = Variable(data["A"].type(Tensor))
+                fake_B = generator(real_A)
+                img_sample = torch.cat((real_A.data, fake_B.data, real_B.data), -2)
+                save_image(img_sample, "../saved_images/{}/{}.png".format(args.dataset_name, batches_done),
+                           nrow=5, normalize=True)
+
+        if epoch % MODEL_INTERVAL == 0:
+            # Save model checkpoints
+            torch.save(generator.state_dict(),
+                       "../saved_models/%s/generator_%d.pth".format(args.dataset_name, epoch))
+            torch.save(discriminator.state_dict(),
+                        "../saved_models/%s/discriminator_%d.pth".format(args.dataset_name, epoch))
 
 if __name__ == '__main__':
     main()
