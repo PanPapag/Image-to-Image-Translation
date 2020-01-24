@@ -1,6 +1,8 @@
 ## Implementation of the paper [Image-to-Image Translation with Conditional Adversarial Networks](https://arxiv.org/pdf/1611.07004.pdf) using PyTorch
 
-### Examples 
+### Example
+
+![](https://github.com/PanPapag/Image-to-Image-Translation/blob/master/example.png)
 
 ### Requirements
 1. Python 3+
