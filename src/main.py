@@ -78,7 +78,7 @@ def main():
     # Calculate output of image discriminator (PatchGAN)
     patch = (1, args.image_height // 2 ** 4, args.image_width // 2 ** 4)
 
-    if device == 'cuda':
+    if device.type == 'cuda':
         generator = generator.cuda()
         discriminator = discriminator.cuda()
         criterion_GAN = criterion_GAN.cuda()
